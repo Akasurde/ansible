@@ -70,6 +70,7 @@ options:
       - Time in seconds to wait before checking for the operational state on remote
         device. This wait is applicable for operational state argument which are
         I(state) with values C(up)/C(down), I(tx_rate) and I(rx_rate).
+    default: 10
   state:
     description:
       - State of the Interface configuration, C(up) means present and
@@ -385,10 +386,12 @@ def check_declarative_intent_params(module, want, result):
                             if item.startswith('Port Description:'):
                                 have_port.append(item.split(':')[1].strip())
             for item in want_neighbors:
-                if item['host'] not in have_host:
-                    failed_conditions.append('host ' + item['host'])
-                if item['port'] not in have_port:
-                    failed_conditions.append('port ' + item['port'])
+                host = item.get('host')
+                port = item.get('port')
+                if host and host not in have_host:
+                    failed_conditions.append('host ' + host)
+                if port and port not in have_port:
+                    failed_conditions.append('port ' + port)
     return failed_conditions
 
 

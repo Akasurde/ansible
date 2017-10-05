@@ -21,11 +21,9 @@ import os
 import re
 import sys
 import copy
-import importlib
 import inspect
 import traceback
 
-from packaging.version import Version
 from os.path import expanduser
 
 from ansible.module_utils.basic import AnsibleModule
@@ -80,6 +78,22 @@ HAS_AZURE_CLI_CORE = True
 
 HAS_MSRESTAZURE = True
 HAS_MSRESTAZURE_EXC = None
+
+try:
+    import importlib
+except ImportError:
+    # This passes the sanity import test, but does not provide a user friendly error message.
+    # Doing so would require catching Exception for all imports of Azure dependencies in modules and module_utils.
+    importlib = None
+
+try:
+    from packaging.version import Version
+    HAS_PACKAGING_VERSION = True
+    HAS_PACKAGING_VERSION_EXC = None
+except ImportError as exc:
+    Version = None
+    HAS_PACKAGING_VERSION = False
+    HAS_PACKAGING_VERSION_EXC = exc
 
 # NB: packaging issue sometimes cause msrestazure not to be installed, check it separately
 try:
@@ -149,7 +163,7 @@ class AzureRMModuleBase(object):
     def __init__(self, derived_arg_spec, bypass_checks=False, no_log=False,
                  check_invalid_arguments=True, mutually_exclusive=None, required_together=None,
                  required_one_of=None, add_file_common_args=False, supports_check_mode=False,
-                 required_if=None, supports_tags=True, facts_module=False):
+                 required_if=None, supports_tags=True, facts_module=False, skip_exec=False):
 
         merged_arg_spec = dict()
         merged_arg_spec.update(AZURE_COMMON_ARGS)
@@ -173,6 +187,10 @@ class AzureRMModuleBase(object):
                                     add_file_common_args=add_file_common_args,
                                     supports_check_mode=supports_check_mode,
                                     required_if=merged_required_if)
+
+        if not HAS_PACKAGING_VERSION:
+            self.fail("Do you have packaging installed? Try `pip install packaging`"
+                      "- {0}".format(HAS_PACKAGING_VERSION_EXC))
 
         if not HAS_MSRESTAZURE:
             self.fail("Do you have msrestazure installed? Try `pip install msrestazure`"
@@ -252,8 +270,9 @@ class AzureRMModuleBase(object):
         if self.module.params.get('tags'):
             self.validate_tags(self.module.params['tags'])
 
-        res = self.exec_module(**self.module.params)
-        self.module.exit_json(**res)
+        if not skip_exec:
+            res = self.exec_module(**self.module.params)
+            self.module.exit_json(**res)
 
     def check_client_version(self, client_name, client_version, expected_version):
         # Ensure Azure modules are at least 2.0.0rc5.
@@ -455,7 +474,7 @@ class AzureRMModuleBase(object):
 
         return None
 
-    def serialize_obj(self, obj, class_name, enum_modules=[]):
+    def serialize_obj(self, obj, class_name, enum_modules=None):
         '''
         Return a JSON representation of an Azure object.
 
@@ -464,6 +483,8 @@ class AzureRMModuleBase(object):
         :param enum_modules: List of module names to build enum dependencies from.
         :return: serialized result
         '''
+        enum_modules = [] if enum_modules is None else enum_modules
+
         dependencies = dict()
         if enum_modules:
             for module_name in enum_modules:
@@ -527,7 +548,7 @@ class AzureRMModuleBase(object):
                 self.fail("Error {0} has a provisioning state of {1}. Expecting state to be {2}.".format(
                     azure_object.name, azure_object.provisioning_state, AZURE_SUCCESS_STATE))
 
-    def get_blob_client(self, resource_group_name, storage_account_name):
+    def get_blob_client(self, resource_group_name, storage_account_name, storage_blob_type='block'):
         keys = dict()
         try:
             # Get keys from the storage account
@@ -538,7 +559,12 @@ class AzureRMModuleBase(object):
 
         try:
             self.log('Create blob service')
-            return CloudStorageAccount(storage_account_name, account_keys.keys[0].value).create_block_blob_service()
+            if storage_blob_type == 'page':
+                return CloudStorageAccount(storage_account_name, account_keys.keys[0].value).create_page_blob_service()
+            elif storage_blob_type == 'block':
+                return CloudStorageAccount(storage_account_name, account_keys.keys[0].value).create_block_blob_service()
+            else:
+                raise Exception("Invalid storage blob type defined.")
         except Exception as exc:
             self.fail("Error creating blob service client for storage account {0} - {1}".format(storage_account_name,
                                                                                                 str(exc)))

@@ -2178,7 +2178,8 @@ def checkVlanNameNotAssigned(
     retVal = waitForDeviceResponse(command, prompt, timeout, obj)
     if(retVal.find(vlanName) != -1):
         return "Nok"
-    return retVal
+    else:
+        return "ok"
 # EOM
 
 
@@ -3158,10 +3159,13 @@ def waitForDeviceResponse(command, prompt, timeout, obj):
             if(gotit != -1):
                 flag = True
         except:
-            if prompt != "(yes/no)?":
-                retVal = retVal + "\n Error-101"
-            else:
+            # debugOutput(prompt)
+            if prompt == "(yes/no)?":
                 retVal = retVal
+            elif prompt == "Password:":
+                retVal = retVal
+            else:
+                retVal = retVal + "\n Error-101"
             flag = True
     return retVal
 # EOM
@@ -3175,7 +3179,7 @@ def checkOutputForError(output):
         index = output.lower().find("invalid")
         startIndex = index + 8
         if(index == -1):
-            index = output.lower().find("Cannot be enabled in L2 Interface")
+            index = output.lower().find("cannot be enabled in l2 interface")
             startIndex = index + 34
             if(index == -1):
                 index = output.lower().find("incorrect")

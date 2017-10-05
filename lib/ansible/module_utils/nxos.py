@@ -49,46 +49,43 @@ nxos_provider_spec = {
 
     'use_ssl': dict(type='bool'),
     'validate_certs': dict(type='bool'),
+
     'timeout': dict(type='int'),
 
-    'transport': dict(choices=['cli', 'nxapi'])
+    'transport': dict(default='cli', choices=['cli', 'nxapi'])
 }
 nxos_argument_spec = {
     'provider': dict(type='dict', options=nxos_provider_spec),
 }
-nxos_argument_spec.update(nxos_provider_spec)
+nxos_top_spec = {
+    'host': dict(removed_in_version=2.9),
+    'port': dict(removed_in_version=2.9, type='int'),
 
-# Add argument's default value here
-ARGS_DEFAULT_VALUE = {
-    'transport': 'cli'
+    'username': dict(removed_in_version=2.9),
+    'password': dict(removed_in_version=2.9, no_log=True),
+    'ssh_keyfile': dict(removed_in_version=2.9),
+
+    'use_ssl': dict(removed_in_version=2.9, type='bool'),
+    'validate_certs': dict(removed_in_version=2.9, type='bool'),
+    'timeout': dict(removed_in_version=2.9, type='int'),
+
+    'transport': dict(removed_in_version=2.9, choices=['cli', 'nxapi'])
 }
+nxos_argument_spec.update(nxos_top_spec)
 
 
-def get_argspec():
-    return nxos_argument_spec
+def get_provider_argspec():
+    return nxos_provider_spec
 
 
 def check_args(module, warnings):
-    for key in nxos_argument_spec:
-        if module._name == 'nxos_user':
-            if key not in ['password', 'provider', 'transport'] and module.params[key]:
-                warnings.append('argument %s has been deprecated and will be in a future version' % key)
-        else:
-            if key not in ['provider', 'transport'] and module.params[key]:
-                warnings.append('argument %s has been deprecated and will be removed in a future version' % key)
-
-    # set argument's default value if not provided in input
-    # This is done to avoid unwanted argument deprecation warning
-    # in case argument is not given as input (outside provider).
-    for key in ARGS_DEFAULT_VALUE:
-        if not module.params.get(key, None):
-            module.params[key] = ARGS_DEFAULT_VALUE[key]
+    pass
 
 
 def load_params(module):
     provider = module.params.get('provider') or dict()
     for key, value in iteritems(provider):
-        if key in nxos_argument_spec:
+        if key in nxos_provider_spec:
             if module.params.get(key) is None and value is not None:
                 module.params[key] = value
 
@@ -116,9 +113,11 @@ class Cli:
             command = self._module.jsonify(command)
         return exec_command(self._module, command)
 
-    def get_config(self, flags=[]):
+    def get_config(self, flags=None):
         """Retrieves the current config from the device or cache
         """
+        flags = [] if flags is None else flags
+
         cmd = 'show running-config '
         cmd += ' '.join(flags)
         cmd = cmd.strip()
@@ -151,15 +150,21 @@ class Cli:
             if check_rc and rc != 0:
                 self._module.fail_json(msg=to_text(err, errors='surrogate_then_replace'))
 
-            try:
-                out = self._module.from_json(out)
-            except ValueError:
-                out = str(out).strip()
+            if not check_rc and rc != 0:
+                try:
+                    out = self._module.from_json(err)
+                except ValueError:
+                    out = to_text(err, errors='surrogate_then_replace').strip()
+            else:
+                try:
+                    out = self._module.from_json(out)
+                except ValueError:
+                    out = to_text(out, errors='surrogate_then_replace').strip()
 
             responses.append(out)
         return responses
 
-    def load_config(self, config):
+    def load_config(self, config, return_error=False):
         """Sends configuration commands to the remote device
         """
 
@@ -238,7 +243,7 @@ class Nxapi:
 
         return dict(ins_api=msg)
 
-    def send_request(self, commands, output='text', check_status=True):
+    def send_request(self, commands, output='text', check_status=True, return_error=False):
         # only 10 show commands can be encoded in each request
         # messages sent to the remote device
         if output != 'config':
@@ -289,7 +294,10 @@ class Nxapi:
                 output = response['ins_api']['outputs']['output']
                 for item in to_list(output):
                     if check_status and item['code'] != '200':
-                        self._error(output=output, **item)
+                        if return_error:
+                            result.append(item)
+                        else:
+                            self._error(output=output, **item)
                     elif 'body' in item:
                         result.append(item['body'])
                     # else:
@@ -299,9 +307,11 @@ class Nxapi:
 
             return result
 
-    def get_config(self, flags=[]):
+    def get_config(self, flags=None):
         """Retrieves the current config from the device or cache
         """
+        flags = [] if flags is None else flags
+
         cmd = 'show running-config '
         cmd += ' '.join(flags)
         cmd = cmd.strip()
@@ -341,12 +351,15 @@ class Nxapi:
 
         return responses
 
-    def load_config(self, commands):
+    def load_config(self, commands, return_error=False):
         """Sends the ordered set of commands to the device
         """
         commands = to_list(commands)
-        self.send_request(commands, output='config')
-        return []
+        msg = self.send_request(commands, output='config', check_status=True, return_error=return_error)
+        if return_error:
+            return msg
+        else:
+            return []
 
 
 def is_json(cmd):
@@ -385,7 +398,9 @@ def to_command(module, commands):
     return commands
 
 
-def get_config(module, flags=[]):
+def get_config(module, flags=None):
+    flags = [] if flags is None else flags
+
     conn = get_connection(module)
     return conn.get_config(flags)
 
@@ -395,6 +410,6 @@ def run_commands(module, commands, check_rc=True):
     return conn.run_commands(to_command(module, commands), check_rc)
 
 
-def load_config(module, config):
+def load_config(module, config, return_error=False):
     conn = get_connection(module)
-    return conn.load_config(config)
+    return conn.load_config(config, return_error=return_error)

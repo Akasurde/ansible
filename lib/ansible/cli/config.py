@@ -44,7 +44,7 @@ except ImportError:
 class ConfigCLI(CLI):
     """ Config command line class """
 
-    VALID_ACTIONS = ("view", "edit", "update", "dump", "list")
+    VALID_ACTIONS = ("view", "dump", "list") # TODO: edit, update, search
 
     def __init__(self, args, callback=None):
 
@@ -56,9 +56,9 @@ class ConfigCLI(CLI):
 
         self.parser = CLI.base_parser(
             usage = "usage: %%prog [%s] [--help] [options] [ansible.cfg]" % "|".join(self.VALID_ACTIONS),
-            epilog = "\nSee '%s <command> --help' for more information on a specific command.\n\n" % os.path.basename(sys.argv[0])
+            epilog = "\nSee '%s <command> --help' for more information on a specific command.\n\n" % os.path.basename(sys.argv[0]),
+            desc="View, edit, and manage ansible configuration.",
         )
-
         self.parser.add_option('-c', '--config', dest='config_file', help="path to configuration file, defaults to first file found in precedence.")
 
         self.set_action()
@@ -69,14 +69,11 @@ class ConfigCLI(CLI):
         if self.action == "dump":
             self.parser.add_option('--only-changed', dest='only_changed', action='store_true',
                                    help="Only show configurations that have changed from the default")
-            self.parser.set_usage("usage: %prog dump [options] [-c ansible.cfg]")
-        elif self.action == "view":
-            self.parser.set_usage("usage: %prog view [options] [-c ansible.cfg] ")
-        elif self.action == "edit":
-            self.parser.set_usage("usage: %prog edit [options] [-c ansible.cfg]")
         elif self.action == "update":
             self.parser.add_option('-s', '--setting', dest='setting', help="config setting, the section defaults to 'defaults'")
             self.parser.set_usage("usage: %prog update [options] [-c ansible.cfg] -s '[section.]setting=value'")
+        elif self.action == "search":
+            self.parser.set_usage("usage: %prog update [options] [-c ansible.cfg] <search term>")
 
         self.options, self.args = self.parser.parse_args()
         display.verbosity = self.options.verbosity
@@ -112,6 +109,7 @@ class ConfigCLI(CLI):
         '''
         raise AnsibleError("Option not implemented yet")
 
+        # pylint: disable=unreachable
         if self.options.setting is None:
             raise AnsibleOptionsError("update option requries a setting to update")
 
@@ -144,6 +142,8 @@ class ConfigCLI(CLI):
         Opens ansible.cfg in the default EDITOR
         '''
         raise AnsibleError("Option not implemented yet")
+
+        # pylint: disable=unreachable
         try:
             editor = shlex.split(os.environ.get('EDITOR','vi'))
             editor.append(self.config_file)

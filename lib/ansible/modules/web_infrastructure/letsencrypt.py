@@ -20,9 +20,9 @@ author: "Michael Gruener (@mgruener)"
 version_added: "2.2"
 short_description: Create SSL certificates with Let's Encrypt
 description:
-   - "Create and renew SSL certificates with Let's Encrypt. Let’s Encrypt is a
+   - "Create and renew SSL certificates with Let's Encrypt. Let's Encrypt is a
       free, automated, and open certificate authority (CA), run for the
-      public’s benefit. For details see U(https://letsencrypt.org). The current
+      public's benefit. For details see U(https://letsencrypt.org). The current
       implementation supports the http-01, tls-sni-02 and dns-01 challenges."
    - "To use this module, it has to be executed at least twice. Either as two
       different tasks in the same run or during multiple runs."
@@ -407,13 +407,15 @@ class ACMEAccount(object):
 
         return result, info
 
-    def _new_reg(self, contact=[]):
+    def _new_reg(self, contact=None):
         '''
         Registers a new ACME account. Returns True if the account was
         created and False if it already existed (e.g. it was not newly
         created)
         https://tools.ietf.org/html/draft-ietf-acme-acme-02#section-6.3
         '''
+        contact = [] if contact is None else contact
+
         if self.uri is not None:
             return True
 

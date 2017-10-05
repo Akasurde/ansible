@@ -670,10 +670,12 @@ class SSLValidationHandler(urllib_request.BaseHandler):
             to_add_path = None
         return (tmp_path, to_add_path, paths_checked)
 
-    def validate_proxy_response(self, response, valid_codes=[200]):
+    def validate_proxy_response(self, response, valid_codes=None):
         '''
         make sure we get back a valid code from the proxy
         '''
+        valid_codes = [200] if valid_codes is None else valid_codes
+
         try:
             (http_version, resp_code, msg) = re.match(r'(HTTP/\d\.\d) (\d\d\d) (.*)', response).groups()
             if int(resp_code) not in valid_codes:
@@ -726,7 +728,7 @@ class SSLValidationHandler(urllib_request.BaseHandler):
                 port = proxy_parts.get('port') or 443
                 s = socket.create_connection((proxy_parts.get('hostname'), port))
                 if proxy_parts.get('scheme') == 'http':
-                    s.sendall(self.CONNECT_COMMAND % (self.hostname, self.port))
+                    s.sendall(to_bytes(self.CONNECT_COMMAND % (self.hostname, self.port), errors='surrogate_or_strict'))
                     if proxy_parts.get('username'):
                         credentials = "%s:%s" % (proxy_parts.get('username', ''), proxy_parts.get('password', ''))
                         s.sendall(b'Proxy-Authorization: Basic %s\r\n' % base64.b64encode(to_bytes(credentials, errors='surrogate_or_strict')).strip())

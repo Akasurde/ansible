@@ -21,9 +21,9 @@ import sys
 import copy
 
 from ansible import constants as C
+from ansible.errors import AnsibleError
 from ansible.plugins.action import ActionBase
-from ansible.module_utils.basic import AnsibleFallbackNotFound
-from ansible.module_utils.six import iteritems
+from ansible.module_utils.network_common import load_provider
 
 from imp import find_module, load_module
 
@@ -47,7 +47,16 @@ class ActionModule(ActionBase):
         play_context = copy.deepcopy(self._play_context)
         play_context.network_os = self._get_network_os(task_vars)
 
-        self.provider = self._load_provider(play_context.network_os)
+        # we should be able to stream line this a bit by creating a common
+        # provider argument spec in module_utils/network_common.py or another
+        # option is that there isn't a need to push provider into the module
+        # since the connection is started in the action handler.
+        f, p, d = find_module('ansible')
+        f2, p2, d2 = find_module('module_utils', [p])
+        f3, p3, d3 = find_module(play_context.network_os, [p2])
+        module = load_module('ansible.module_utils.' + play_context.network_os, f3, p3, d3)
+
+        self.provider = load_provider(module.get_provider_argspec(), self._task.args)
 
         if play_context.network_os == 'junos':
             play_context.connection = 'netconf'
@@ -130,21 +139,17 @@ class ActionModule(ActionBase):
         return socket_path
 
     def _get_network_os(self, task_vars):
-        if ('network_os' in self._task.args and self._task.args['network_os']):
+        if 'network_os' in self._task.args and self._task.args['network_os']:
             display.vvvv('Getting network OS from task argument')
             network_os = self._task.args['network_os']
-        elif (self._play_context.network_os):
+        elif self._play_context.network_os:
             display.vvvv('Getting network OS from inventory')
             network_os = self._play_context.network_os
-        elif ('network_os' in task_vars['ansible_facts'] and
-                task_vars['ansible_facts']['network_os']):
+        elif 'network_os' in task_vars.get('ansible_facts', {}) and task_vars['ansible_facts']['network_os']:
             display.vvvv('Getting network OS from fact')
             network_os = task_vars['ansible_facts']['network_os']
         else:
-            # this will be replaced by the call to get_capabilities() on the
-            # connection
-            display.vvvv('Getting network OS from net discovery')
-            network_os = None
+            raise AnsibleError('ansible_network_os must be specified on this host to use platform agnostic modules')
 
         return network_os
 
@@ -154,39 +159,3 @@ class ActionModule(ActionBase):
             implementation_module = None
 
         return implementation_module
-
-    def _load_provider(self, network_os):
-        # we should be able to stream line this a bit by creating a common
-        # provider argument spec in module_utils/network_common.py or another
-        # option is that there isn't a need to push provider into the module
-        # since the connection is started in the action handler.
-        f, p, d = find_module('ansible')
-        f2, p2, d2 = find_module('module_utils', [p])
-        f3, p3, d3 = find_module(network_os, [p2])
-        module = load_module('ansible.module_utils.' + network_os, f3, p3, d3)
-
-        provider = self._task.args.get('provider', {})
-        for key, value in iteritems(module.get_argspec()):
-            if key != 'provider' and key not in provider:
-                if key in self._task.args:
-                    provider[key] = self._task.args[key]
-                elif 'fallback' in value:
-                    provider[key] = self._fallback(value['fallback'])
-                elif key not in provider:
-                    provider[key] = None
-        return provider
-
-    def _fallback(self, fallback):
-        strategy = fallback[0]
-        args = []
-        kwargs = {}
-
-        for item in fallback[1:]:
-            if isinstance(item, dict):
-                kwargs = item
-            else:
-                args = item
-        try:
-            return strategy(*args, **kwargs)
-        except AnsibleFallbackNotFound:
-            pass

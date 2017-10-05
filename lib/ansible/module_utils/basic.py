@@ -729,8 +729,7 @@ def env_fallback(*args, **kwargs):
     for arg in args:
         if arg in os.environ:
             return os.environ[arg]
-    else:
-        raise AnsibleFallbackNotFound
+    raise AnsibleFallbackNotFound
 
 
 def _lenient_lowercase(lst):
@@ -2156,7 +2155,7 @@ class AnsibleModule(object):
         # and we don't want to break modules unnecessarily
         return None
 
-    def get_bin_path(self, arg, required=False, opt_dirs=[]):
+    def get_bin_path(self, arg, required=False, opt_dirs=None):
         '''
         find system executable in PATH.
         Optional arguments:
@@ -2164,6 +2163,8 @@ class AnsibleModule(object):
            - opt_dirs:  optional list of directories to search in addition to PATH
         if found return full path; otherwise return None
         '''
+        opt_dirs = [] if opt_dirs is None else opt_dirs
+
         sbin_paths = ['/sbin', '/usr/sbin', '/usr/local/sbin']
         paths = []
         for d in opt_dirs:
@@ -2605,10 +2606,10 @@ class AnsibleModule(object):
             if use_unsafe_shell:
                 args = " ".join([shlex_quote(x) for x in args])
                 shell = True
-        elif isinstance(args, (binary_type, text_type)) and use_unsafe_shell:
-            shell = True
         elif isinstance(args, (binary_type, text_type)):
-            if not use_unsafe_shell:
+            if use_unsafe_shell:
+                shell = True
+            else:
                 # On python2.6 and below, shlex has problems with text type
                 # On python3, shlex needs a text type.
                 if PY2:

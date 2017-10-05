@@ -43,10 +43,16 @@ aireos_provider_spec = {
 aireos_argument_spec = {
     'provider': dict(type='dict', options=aireos_provider_spec)
 }
-aireos_argument_spec.update(aireos_provider_spec)
 
-# Add argument's default value here
-ARGS_DEFAULT_VALUE = {}
+aireos_top_spec = {
+    'host': dict(removed_in_version=2.9),
+    'port': dict(removed_in_version=2.9, type='int'),
+    'username': dict(removed_in_version=2.9),
+    'password': dict(removed_in_version=2.9, no_log=True),
+    'ssh_keyfile': dict(removed_in_version=2.9, type='path'),
+    'timeout': dict(removed_in_version=2.9, type='int'),
+}
+aireos_argument_spec.update(aireos_top_spec)
 
 
 def sanitize(resp):
@@ -59,24 +65,17 @@ def sanitize(resp):
     return '\n'.join(cleaned).strip()
 
 
-def get_argspec():
-    return aireos_argument_spec
+def get_provider_argspec():
+    return aireos_provider_spec
 
 
 def check_args(module, warnings):
-    for key in aireos_argument_spec:
-        if key not in ['provider', 'authorize'] and module.params[key]:
-            warnings.append('argument %s has been deprecated and will be removed in a future version' % key)
-
-    # set argument's default value if not provided in input
-    # This is done to avoid unwanted argument deprecation warning
-    # in case argument is not given as input (outside provider).
-    for key in ARGS_DEFAULT_VALUE:
-        if not module.params.get(key, None):
-            module.params[key] = ARGS_DEFAULT_VALUE[key]
+    pass
 
 
-def get_config(module, flags=[]):
+def get_config(module, flags=None):
+    flags = [] if flags is None else flags
+
     cmd = 'show run-config commands '
     cmd += ' '.join(flags)
     cmd = cmd.strip()

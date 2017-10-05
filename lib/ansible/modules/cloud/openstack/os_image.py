@@ -44,6 +44,12 @@ options:
         - The Id of the image
      required: false
      default: None
+   checksum:
+     version_added: "2.5"
+     description:
+        - The checksum of the image
+     required: false
+     default: None
    disk_format:
      description:
         - The format of the disk that is getting uploaded
@@ -138,6 +144,7 @@ def main():
     argument_spec = openstack_full_argument_spec(
         name              = dict(required=True),
         id                = dict(default=None),
+        checksum          = dict(default=None),
         disk_format       = dict(default='qcow2', choices=['ami', 'ari', 'aki', 'vhd', 'vmdk', 'raw', 'qcow2', 'vdi', 'iso', 'vhdx', 'ploop']),
         container_format  = dict(default='bare', choices=['ami', 'aki', 'ari', 'bare', 'ovf', 'ova', 'docker']),
         owner             = dict(default=None),
@@ -160,13 +167,18 @@ def main():
         cloud = shade.openstack_cloud(**module.params)
 
         changed = False
-        image = cloud.get_image(name_or_id=module.params['name'])
+        if module.params['checksum']:
+            image = cloud.get_image(name_or_id=None,filters={'checksum': module.params['checksum']})
+        else:
+            image = cloud.get_image(name_or_id=module.params['name'])
 
         if module.params['state'] == 'present':
             if not image:
+                kwargs={}
+                if module.params['id'] is not None:
+                    kwargs['id'] = module.params['id']
                 image = cloud.create_image(
                     name=module.params['name'],
-                    id=module.params['id'],
                     filename=module.params['filename'],
                     disk_format=module.params['disk_format'],
                     container_format=module.params['container_format'],
@@ -174,7 +186,8 @@ def main():
                     timeout=module.params['timeout'],
                     is_public=module.params['is_public'],
                     min_disk=module.params['min_disk'],
-                    min_ram=module.params['min_ram']
+                    min_ram=module.params['min_ram'],
+                    **kwargs
                 )
                 changed = True
                 if not module.params['wait']:

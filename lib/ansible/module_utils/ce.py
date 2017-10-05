@@ -61,19 +61,26 @@ ce_provider_spec = {
     'use_ssl': dict(type='bool'),
     'validate_certs': dict(type='bool'),
     'timeout': dict(type='int'),
-    'transport': dict(choices=['cli']),
+    'transport': dict(default='cli', choices=['cli']),
 }
 ce_argument_spec = {
     'provider': dict(type='dict', options=ce_provider_spec),
 }
-ce_argument_spec.update(ce_provider_spec)
+ce_top_spec = {
+    'host': dict(removed_in_version=2.9),
+    'port': dict(removed_in_version=2.9, type='int'),
+    'username': dict(removed_in_version=2.9),
+    'password': dict(removed_in_version=2.9, no_log=True),
+    'use_ssl': dict(removed_in_version=2.9, type='bool'),
+    'validate_certs': dict(removed_in_version=2.9, type='bool'),
+    'timeout': dict(removed_in_version=2.9, type='int'),
+    'transport': dict(removed_in_version=2.9, choices=['cli']),
+}
+ce_argument_spec.update(ce_top_spec)
 
 
 def check_args(module, warnings):
-    for key in ce_argument_spec:
-        if key not in ['provider', 'transport'] and module.params[key]:
-            warnings.append('argument %s has been deprecated and will be '
-                            'removed in a future version' % key)
+    pass
 
 
 def load_params(module):
@@ -120,9 +127,11 @@ class Cli:
 
         return exec_command(self._module, command)
 
-    def get_config(self, flags=[]):
+    def get_config(self, flags=None):
         """Retrieves the current config from the device or cache
         """
+        flags = [] if flags is None else flags
+
         cmd = 'display current-configuration '
         cmd += ' '.join(flags)
         cmd = cmd.strip()
@@ -227,7 +236,9 @@ def to_command(module, commands):
     return commands
 
 
-def get_config(module, flags=[]):
+def get_config(module, flags=None):
+    flags = [] if flags is None else flags
+
     conn = get_connection(module)
     return conn.get_config(flags)
 

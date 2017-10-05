@@ -55,7 +55,6 @@ __all__ = ['PlayContext']
 # in variable names.
 
 MAGIC_VARIABLE_MAPPING = dict(
-    accelerate_port=('ansible_accelerate_port', ),
 
     # base
     connection=('ansible_connection', ),
@@ -217,11 +216,6 @@ class PlayContext(Base):
     # ???
     _connection_lockfd = FieldAttribute(isa='int')
 
-    # accelerate FIXME: remove as soon as deprecation period expires
-    _accelerate = FieldAttribute(isa='bool', default=False)
-    _accelerate_ipv6 = FieldAttribute(isa='bool', default=False, always_post_validate=True)
-    _accelerate_port = FieldAttribute(isa='int', default=C.ACCELERATE_PORT, always_post_validate=True)
-
     # privilege escalation fields
     _become = FieldAttribute(isa='bool')
     _become_method = FieldAttribute(isa='string')
@@ -281,12 +275,6 @@ class PlayContext(Base):
         the play class.
         '''
 
-        # special handling for accelerated mode, as it is set in a separate
-        # play option from the connection parameter
-        self.accelerate = play.accelerate
-        self.accelerate_ipv6 = play.accelerate_ipv6
-        self.accelerate_port = play.accelerate_port
-
         if play.connection:
             self.connection = play.connection
 
@@ -307,7 +295,7 @@ class PlayContext(Base):
             self.force_handlers = play.force_handlers
 
     def set_options_from_plugin(self, plugin):
-        # generic derived from connection plugin
+        # generic derived from connection plugin, temporary for backwards compat, in the end we should not set play_context properties
 
         # get options for plugins
         options = C.config.get_configuration_definitions(get_plugin_class(plugin), plugin._load_name)
@@ -318,7 +306,7 @@ class PlayContext(Base):
                     setattr(self, flag, self.connection.get_option(flag))
 
         # TODO: made irrelavent by above
-        # get ssh options FIXME: make these common to all connections
+        # get ssh options
         # for flag in ('ssh_common_args', 'docker_extra_args', 'sftp_extra_args', 'scp_extra_args', 'ssh_extra_args'):
         #     setattr(self, flag, getattr(options, flag, ''))
 
@@ -540,18 +528,10 @@ class PlayContext(Base):
                 command = success_cmd
 
             # set executable to use for the privilege escalation method, with various overrides
-            exe = self.become_method
-            for myexe in (getattr(self, '%s_exe' % self.become_method, None), self.become_exe):
-                if myexe:
-                    exe = myexe
-                    break
+            exe = self.become_exe or getattr(self, '%s_exe' % self.become_method, self.become_method)
 
             # set flags to use for the privilege escalation method, with various overrides
-            flags = ''
-            for myflag in (getattr(self, '%s_flags' % self.become_method, None), self.become_flags):
-                if myflag is not None:
-                    flags = myflag
-                    break
+            flags = self.become_flags or getattr(self, '%s_flags' % self.become_method, '')
 
             if self.become_method == 'sudo':
                 # If we have a password, we run sudo with a randomly-generated

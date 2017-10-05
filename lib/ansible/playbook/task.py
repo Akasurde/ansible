@@ -81,7 +81,7 @@ class Task(Base, Conditional, Taggable, Become):
     _notify = FieldAttribute(isa='list')
     _poll = FieldAttribute(isa='int', default=10)
     _register = FieldAttribute(isa='string')
-    _retries = FieldAttribute(isa='int')
+    _retries = FieldAttribute(isa='int', default=3)
     _until = FieldAttribute(isa='list', default=[])
 
     def __init__(self, block=None, role=None, task_include=None):
@@ -411,11 +411,12 @@ class Task(Base, Conditional, Taggable, Become):
         try:
             value = self._attributes[attr]
             if self._parent and (value is None or extend):
-                parent_value = getattr(self._parent, attr, None)
-                if extend:
-                    value = self._extend_value(value, parent_value, prepend)
-                else:
-                    value = parent_value
+                if attr != 'when' or getattr(self._parent, 'statically_loaded', True):
+                    parent_value = getattr(self._parent, attr, None)
+                    if extend:
+                        value = self._extend_value(value, parent_value, prepend)
+                    else:
+                        value = parent_value
         except KeyError:
             pass
 
@@ -456,3 +457,11 @@ class Task(Base, Conditional, Taggable, Become):
         if self._parent:
             return self._parent.all_parents_static()
         return True
+
+    def get_first_parent_include(self):
+        from ansible.playbook.task_include import TaskInclude
+        if self._parent:
+            if isinstance(self._parent, TaskInclude):
+                return self._parent
+            return self._parent.get_first_parent_include()
+        return None

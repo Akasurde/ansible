@@ -168,6 +168,7 @@ class InventoryManager(object):
         return self._inventory.get_groups_dict()
 
     def reconcile_inventory(self):
+        self.clear_caches()
         return self._inventory.reconcile_inventory()
 
     def get_host(self, hostname):
@@ -268,7 +269,7 @@ class InventoryManager(object):
                 if not parsed and failures:
                     # only if no plugin processed files should we show errors.
                     if C.INVENTORY_UNPARSED_IS_FAILED:
-                        msg = "Could not parse inventory source %s with availabel plugins:\n" % source
+                        msg = "Could not parse inventory source %s with available plugins:\n" % source
                         for fail in failures:
                             msg += 'Plugin %s failed: %s\n' % (fail['plugin'], to_native(fail['exc']))
                             if display.verbosity >= 3:

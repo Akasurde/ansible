@@ -44,24 +44,28 @@ iosxr_provider_spec = {
 iosxr_argument_spec = {
     'provider': dict(type='dict', options=iosxr_provider_spec)
 }
-iosxr_argument_spec.update(iosxr_provider_spec)
+iosxr_top_spec = {
+    'host': dict(removed_in_version=2.9),
+    'port': dict(removed_in_version=2.9, type='int'),
+    'username': dict(removed_in_version=2.9),
+    'password': dict(removed_in_version=2.9, no_log=True),
+    'ssh_keyfile': dict(removed_in_version=2.9, type='path'),
+    'timeout': dict(removed_in_version=2.9, type='int'),
+}
+iosxr_argument_spec.update(iosxr_top_spec)
 
 
-def get_argspec():
-    return iosxr_argument_spec
+def get_provider_argspec():
+    return iosxr_provider_spec
 
 
 def check_args(module, warnings):
-    for key in iosxr_argument_spec:
-        if module._name == 'iosxr_user':
-            if key not in ['password', 'provider'] and module.params[key]:
-                warnings.append('argument %s has been deprecated and will be in a future version' % key)
-        else:
-            if key != 'provider' and module.params[key]:
-                warnings.append('argument %s has been deprecated and will be removed in a future version' % key)
+    pass
 
 
-def get_config(module, flags=[]):
+def get_config(module, flags=None):
+    flags = [] if flags is None else flags
+
     cmd = 'show running-config '
     cmd += ' '.join(flags)
     cmd = cmd.strip()

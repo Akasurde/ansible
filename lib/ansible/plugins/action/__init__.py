@@ -166,7 +166,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
         return (module_style, module_shebang, module_data, module_path)
 
-    def _compute_environment_string(self, raw_environment_out=dict()):
+    def _compute_environment_string(self, raw_environment_out=None):
         '''
         Builds the environment string to be used when executing the remote task.
         '''
@@ -392,7 +392,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             # we have a need for it, at which point we'll have to do something different.
             return remote_paths
 
-        if self._play_context.become and self._play_context.become_user not in ('root', remote_user):
+        if self._play_context.become and self._play_context.become_user and self._play_context.become_user not in ('root', remote_user):
             # Unprivileged user that's different than the ssh user.  Let's get
             # to work!
 
@@ -532,7 +532,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             elif 'json' in errormsg or 'simplejson' in errormsg:
                 x = "5"  # json or simplejson modules needed
         finally:
-            return x
+            return x  # pylint: disable=lost-exception
 
     def _remote_expand_user(self, path, sudoable=True):
         ''' takes a remote path and performs tilde expansion on the remote host '''
@@ -721,11 +721,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
                     rm_tmp = tmp
 
             cmd = self._connection._shell.build_module_command(environment_string, shebang, cmd, arg_path=args_file_path, rm_tmp=rm_tmp).strip()
-
-            if module_name == "accelerate":
-                # always run the accelerate module as the user
-                # specified in the play, not the sudo_user
-                sudoable = False
 
         # Fix permissions of the tmp path and tmp files. This should be called after all files have been transferred.
         if remote_files:

@@ -78,7 +78,6 @@ EXAMPLES = '''
 
 '''
 
-import os
 import traceback
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.digital_ocean import DigitalOceanHelper
@@ -112,7 +111,12 @@ class DoManager(DigitalOceanHelper, object):
     def add(self):
         params = {'name': self.domain_name, 'ip_address': self.domain_ip}
         resp = self.post('domains/', data=params)
-        return resp['domains']
+        status = resp.status_code
+        json = resp.json
+        if status == 201:
+            return json['domain']
+        else:
+            return json
 
     def all_domain_records(self):
         resp = self.get('domains/%s/records/' % self.domain_id)
@@ -136,7 +140,10 @@ def core(module):
     if state == 'present':
         if not domain:
             domain = do_manger.add()
-            module.exit_json(changed=True, domain=domain)
+            if 'message' in domain:
+                module.fail_json(changed=False, msg=domain['message'])
+            else:
+                module.exit_json(changed=True, domain=domain)
         else:
             records = do_manger.all_domain_records()
             at_record = None

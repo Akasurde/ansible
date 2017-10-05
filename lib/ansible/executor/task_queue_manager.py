@@ -84,9 +84,9 @@ class TaskQueueManager:
         self._start_at_done = False
 
         # make sure any module paths (if specified) are added to the module_loader
-        if isinstance(options.module_path, list):
+        if options.module_path:
             for path in options.module_path:
-                if path is not None:
+                if path:
                     module_loader.add_directory(path)
 
         # a special flag to help us exit cleanly
@@ -176,6 +176,12 @@ class TaskQueueManager:
                 raise AnsibleError("Invalid callback for stdout specified: %s" % self._stdout_callback)
             else:
                 self._stdout_callback = callback_loader.get(self._stdout_callback)
+                try:
+                    self._stdout_callback.set_options(C.config.get_plugin_options('callback', self._stdout_callback._load_name))
+                except AttributeError:
+                    display.deprecated("%s stdout callback, does not support setting 'options', it will work for now, "
+                                       " but this will be required in the future and should be updated,"
+                                       " see the 2.4 porting guide for details." % self._stdout_callback._load_name, version="2.9")
                 stdout_callback_loaded = True
         else:
             raise AnsibleError("callback must be an instance of CallbackBase or the name of a callback plugin")
@@ -198,7 +204,14 @@ class TaskQueueManager:
                         C.DEFAULT_CALLBACK_WHITELIST is None or callback_name not in C.DEFAULT_CALLBACK_WHITELIST)):
                     continue
 
-            self._callback_plugins.append(callback_plugin())
+            callback_obj = callback_plugin()
+            try:
+                callback_obj .set_options(C.config.get_plugin_options('callback', callback_plugin._load_name))
+            except AttributeError:
+                    display.deprecated("%s callback, does not support setting 'options', it will work for now, "
+                                       " but this will be required in the future and should be updated, "
+                                       " see the 2.4 porting guide for details." % self._stdout_callback._load_name, version="2.9")
+            self._callback_plugins.append(callback_obj)
 
         self._callbacks_loaded = True
 
@@ -366,4 +379,4 @@ class TaskQueueManager:
                     display.warning(u"Failure using method (%s) in callback plugin (%s): %s" % (to_text(method_name), to_text(callback_plugin), to_text(e)))
                     from traceback import format_tb
                     from sys import exc_info
-                    display.debug('Callback Exception: \n' + ' '.join(format_tb(exc_info()[2])))
+                    display.vvv('Callback Exception: \n' + ' '.join(format_tb(exc_info()[2])))

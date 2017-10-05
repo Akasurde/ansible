@@ -194,7 +194,7 @@ class TestFailure(TestResult):
         :type test: str
         :type python_version: str | None
         :type messages: list[TestMessage] | None
-        :type summary: str | None
+        :type summary: unicode | None
         """
         super(TestFailure, self).__init__(command, test, python_version)
 
@@ -359,7 +359,7 @@ class TestFailure(TestResult):
         if self.summary:
             block = self.summary
         else:
-            block = '\n'.join(str(m) for m in self.messages)
+            block = '\n'.join(m.format() for m in self.messages)
 
         message = block.strip()
 
