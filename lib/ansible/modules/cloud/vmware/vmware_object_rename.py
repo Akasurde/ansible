@@ -23,7 +23,7 @@ module: vmware_object_rename
 short_description: Rename a vmware object
 description:
     - This module can be used to rename a vmware object.
-version_added: 2.6
+version_added: 2.8
 author:
     - Abhijeet Kasurde (@akasurde) <akasurde@redhat.com>
 notes:
@@ -75,7 +75,13 @@ EXAMPLES = '''
   delegate_to: localhost
 '''
 
-RETURN = """ # """
+RETURN = '''
+info:
+    description: Info message when rename didn't happen
+    returned: When the new name already exists
+    type: string
+    sample: Unable to rename object new_name as object with same name new_name already exists. Assuming rename already happened
+'''
 
 try:
     import pyVmomi
@@ -123,25 +129,22 @@ class VmObjectMgr(PyVmomi):
                                       " Please make sure you have unique name to use this feature." % old_name)
 
         if already_exists:
-            self.module.fail_json(msg="Unable to rename object %s as object with"
-                                      " same name %s already exists." % (old_name, new_name))
+            self.module.exit_json(info="Unable to rename object %s as object with"
+                                      " same name %s already exists. Assuming rename already happened" % (old_name, new_name), changed=False)
 
-        if module.check_mode:
-            self.module.exit_json(changed=True)
+        if module.check_mode or not objects_list:
+            self.module.exit_json(changed=bool(objects_list))
 
-        if objects_list:
-            desired_obj = objects_list[0]
+    
+        desired_obj = objects_list[0]
+        task = desired_obj.Rename_Task(new_name)
+        wait_for_task(task)
 
-            task = desired_obj.Rename_Task(new_name)
+        if task.info.state == 'error':
+            self.module.fail_json(msg=to_native(task.info.error.msg))
 
-            wait_for_task(task)
+        self.module.exit_json(changed=True)
 
-            if task.info.state == 'error':
-                self.module.fail_json(msg=to_native(task.info.error.msg))
-
-            self.module.exit_json(changed=True)
-        else:
-            self.module.exit_json(changed=False)
 
 
 def main():
