@@ -1,0 +1,29 @@
+- name: create our unarchive destination
+  file:
+    path: "{{ remote_tmp_dir }}/test_invalid"
+    state: directory
+
+- name: test that unarchive works with an archive that contains file with invalid datetimestamp
+  unarchive:
+    src: "zip_with_invalid_datetimestamp.zip"
+    dest: "{{ remote_tmp_dir }}/test_invalid"
+    remote_src: no
+  register: invalid_result0
+
+- name: Check that file is really there
+  stat:
+    path: "{{ remote_tmp_dir }}/test_invalid/eggs.txt"
+  register: invalid_stat0
+
+- name: Assert that invalid zip tests succeeded
+  assert:
+    that:
+      - invalid_result0.changed
+      - invalid_stat0.stat.exists
+      - invalid_stat0.stat.atime == 315532799
+      - invalid_stat0.stat.mtime == 315532799
+
+- name: remove invalid test directory
+  file:
+    path: "{{ remote_tmp_dir }}/test_invalid"
+    state: absent
