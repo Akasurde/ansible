@@ -13,7 +13,6 @@ lib/ansible/modules/command.py validate-modules:doc-default-does-not-match-spec 
 lib/ansible/modules/command.py validate-modules:doc-missing-type
 lib/ansible/modules/command.py validate-modules:nonexistent-parameter-documented
 lib/ansible/modules/command.py validate-modules:undocumented-parameter
-lib/ansible/modules/copy.py validate-modules:doc-default-does-not-match-spec
 lib/ansible/modules/copy.py validate-modules:nonexistent-parameter-documented
 lib/ansible/modules/copy.py validate-modules:undocumented-parameter
 lib/ansible/modules/dnf.py validate-modules:parameter-invalid
@@ -39,8 +38,6 @@ lib/ansible/module_utils/compat/selinux.py import-3.12!skip # pass/fail depends 
 lib/ansible/module_utils/compat/selinux.py import-3.13!skip # pass/fail depends on presence of libselinux.so
 lib/ansible/module_utils/compat/selinux.py pylint:unidiomatic-typecheck
 lib/ansible/module_utils/distro/_distro.py no-assert
-lib/ansible/module_utils/distro/__init__.py empty-init # breaks namespacing, bundled, do not override
-lib/ansible/module_utils/facts/__init__.py empty-init # breaks namespacing, deprecate and eventually remove
 lib/ansible/module_utils/powershell/Ansible.ModuleUtils.ArgvParser.psm1 pslint:PSUseApprovedVerbs
 lib/ansible/module_utils/powershell/Ansible.ModuleUtils.CommandUtil.psm1 pslint:PSProvideCommentHelp # need to agree on best format for comment location
 lib/ansible/module_utils/powershell/Ansible.ModuleUtils.CommandUtil.psm1 pslint:PSUseApprovedVerbs
@@ -50,7 +47,6 @@ lib/ansible/module_utils/powershell/Ansible.ModuleUtils.Legacy.psm1 pslint:PSCus
 lib/ansible/module_utils/powershell/Ansible.ModuleUtils.Legacy.psm1 pslint:PSUseApprovedVerbs
 lib/ansible/module_utils/powershell/Ansible.ModuleUtils.LinkUtil.psm1 pslint:PSUseApprovedVerbs
 lib/ansible/module_utils/pycompat24.py no-get-exception
-lib/ansible/module_utils/six/__init__.py empty-init # breaks namespacing, bundled, do not override
 lib/ansible/module_utils/six/__init__.py pylint:self-assigning-variable
 lib/ansible/module_utils/six/__init__.py pylint:trailing-comma-tuple
 lib/ansible/module_utils/six/__init__.py pylint:unidiomatic-typecheck
@@ -138,10 +134,6 @@ test/support/windows-integration/plugins/modules/win_user_right.ps1 pslint!skip
 test/support/windows-integration/plugins/modules/win_user.ps1 pslint!skip
 test/support/windows-integration/plugins/modules/win_wait_for.ps1 pslint!skip
 test/support/windows-integration/plugins/modules/win_whoami.ps1 pslint!skip
-test/units/module_utils/basic/test_deprecate_warn.py pylint:ansible-deprecated-no-version
-test/units/module_utils/basic/test_deprecate_warn.py pylint:ansible-deprecated-version
-test/units/module_utils/common/warnings/test_deprecate.py pylint:ansible-deprecated-no-version  # testing Display.deprecated call without a version or date
-test/units/module_utils/common/warnings/test_deprecate.py pylint:ansible-deprecated-version  # testing Deprecated version found in call to Display.deprecated or AnsibleModule.deprecate
 test/units/module_utils/urls/fixtures/multipart.txt line-endings  # Fixture for HTTP tests that use CRLF
 test/units/utils/collection_loader/fixtures/collections/ansible_collections/testns/testcoll/plugins/action/my_action.py pylint:relative-beyond-top-level
 test/units/utils/collection_loader/fixtures/collections/ansible_collections/testns/testcoll/plugins/modules/__init__.py empty-init  # testing that collections don't need inits
@@ -160,3 +152,17 @@ test/integration/targets/find/files/hello_world.gbk no-smart-quotes
 test/integration/targets/find/files/hello_world.gbk no-unwanted-characters
 lib/ansible/plugins/action/__init__.py pylint:ansible-deprecated-version  # 2.18 deprecation
 lib/ansible/template/__init__.py pylint:ansible-deprecated-version  # 2.18 deprecation
+lib/ansible/module_utils/facts/hardware/aix.py pylint:used-before-assignment
+lib/ansible/modules/rpm_key.py pylint:used-before-assignment
+lib/ansible/modules/service.py pylint:used-before-assignment
+lib/ansible/modules/user.py pylint:used-before-assignment
+lib/ansible/plugins/action/copy.py pylint:undefined-variable
+test/integration/targets/module_utils/library/test_optional.py pylint:used-before-assignment
+test/support/windows-integration/plugins/action/win_copy.py pylint:undefined-variable
+lib/ansible/compat/selectors.py pylint:ansible-deprecated-version
+lib/ansible/module_utils/compat/importlib.py pylint:ansible-deprecated-version
+lib/ansible/module_utils/compat/selectors.py pylint:ansible-deprecated-version
+lib/ansible/module_utils/pycompat24.py pylint:ansible-deprecated-version
+lib/ansible/plugins/connection/__init__.py pylint:ansible-deprecated-version
+lib/ansible/plugins/filter/core.py pylint:ansible-deprecated-version
+lib/ansible/vars/manager.py pylint:ansible-deprecated-version

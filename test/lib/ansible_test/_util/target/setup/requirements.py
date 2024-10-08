@@ -66,6 +66,8 @@ def bootstrap(pip, options):  # type: (str, t.Dict[str, t.Any]) -> None
     """Bootstrap pip and related packages in an empty virtual environment."""
     pip_version = options['pip_version']
     packages = options['packages']
+    setuptools = options['setuptools']
+    wheel = options['wheel']
 
     url = 'https://ci-files.testing.ansible.com/ansible-test/get-pip-%s.py' % pip_version
     cache_path = os.path.expanduser('~/.ansible/test/cache/get_pip_%s.py' % pip_version.replace(".", "_"))
@@ -100,6 +102,12 @@ https://github.com/ansible/ansible/issues/77304
 
     options = common_pip_options()
     options.extend(packages)
+
+    if not setuptools:
+        options.append('--no-setuptools')
+
+    if not wheel:
+        options.append('--no-wheel')
 
     command = [sys.executable, pip] + options
 
@@ -355,17 +363,17 @@ def open_binary_file(path, mode='rb'):  # type: (str, str) -> t.IO[bytes]
     return io.open(to_bytes(path), mode)  # pylint: disable=consider-using-with,unspecified-encoding
 
 
-def to_optional_bytes(value, errors='strict'):  # type: (t.Optional[t.AnyStr], str) -> t.Optional[bytes]
+def to_optional_bytes(value, errors='strict'):  # type: (t.Optional[str | bytes], str) -> t.Optional[bytes]
     """Return the given value as bytes encoded using UTF-8 if not already bytes, or None if the value is None."""
     return None if value is None else to_bytes(value, errors)
 
 
-def to_optional_text(value, errors='strict'):  # type: (t.Optional[t.AnyStr], str) -> t.Optional[t.Text]
+def to_optional_text(value, errors='strict'):  # type: (t.Optional[str | bytes], str) -> t.Optional[t.Text]
     """Return the given value as text decoded using UTF-8 if not already text, or None if the value is None."""
     return None if value is None else to_text(value, errors)
 
 
-def to_bytes(value, errors='strict'):  # type: (t.AnyStr, str) -> bytes
+def to_bytes(value, errors='strict'):  # type: (str | bytes, str) -> bytes
     """Return the given value as bytes encoded using UTF-8 if not already bytes."""
     if isinstance(value, bytes):
         return value
@@ -376,7 +384,7 @@ def to_bytes(value, errors='strict'):  # type: (t.AnyStr, str) -> bytes
     raise Exception('value is not bytes or text: %s' % type(value))
 
 
-def to_text(value, errors='strict'):  # type: (t.AnyStr, str) -> t.Text
+def to_text(value, errors='strict'):  # type: (str | bytes, str) -> t.Text
     """Return the given value as text decoded using UTF-8 if not already text."""
     if isinstance(value, bytes):
         return value.decode(ENCODING, errors)
